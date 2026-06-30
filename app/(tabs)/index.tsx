@@ -1,98 +1,182 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { ScrollView, StyleSheet, View } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { Icon3D } from '@/components/strack/icon3d';
+import { ProgressRing } from '@/components/strack/progress-ring';
+import { Row, Screen, Txt } from '@/components/strack/themed';
+import { WalkMark } from '@/components/strack/walk-mark';
+import { Brand, Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/context/theme-context';
+import { ICON_3D } from '@/data/assets';
+import { USER, WEEK, type DayDot } from '@/data/mock';
+import { type ImageSourcePropType } from 'react-native';
 
-export default function HomeScreen() {
+export default function Home() {
+  const { colors, isDark, toggleScheme } = useTheme();
+  const pct = USER.steps / USER.stepGoal;
+  const stepsToGo = USER.stepGoal - USER.steps;
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <Screen edges={['top']}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: Spacing.xxl }}>
+        {/* Header */}
+        <Row style={styles.header}>
+          <Ionicons
+            name={isDark ? 'sunny-outline' : 'moon-outline'}
+            size={22}
+            color={colors.text}
+            onPress={toggleScheme}
+          />
+          <View style={styles.headerCenter}>
+            <Txt variant="heading">Good afternoon, {USER.name} 👋</Txt>
+            <Txt variant="caption" muted style={{ marginTop: 2 }}>
+              Great job staying active!
+            </Txt>
+          </View>
+          <Ionicons name="volume-high-outline" size={22} color={colors.text} />
+        </Row>
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+        {/* Day strip */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.dayStrip}>
+          {WEEK.map((d) => (
+            <DayPill key={d.date} day={d} />
+          ))}
+        </ScrollView>
+
+        {/* Streak */}
+        <Row style={styles.streak}>
+          <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
+          <Txt variant="label" style={{ marginHorizontal: Spacing.md }}>
+            🔥 {USER.streak} days streak
+          </Txt>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </Row>
+
+        {/* Progress ring */}
+        <View style={styles.ringWrap}>
+          <ProgressRing
+            size={228}
+            strokeWidth={18}
+            progress={pct}
+            color={colors.tint}
+            trackColor={colors.track}>
+            <WalkMark size={30} color={colors.tint} />
+            <Txt style={[styles.ringValue, { color: colors.text }]}>
+              {USER.steps.toLocaleString()}
+            </Txt>
+            <Txt variant="heading" color={colors.tint}>
+              /{USER.stepGoal.toLocaleString()} Steps
+            </Txt>
+          </ProgressRing>
+        </View>
+
+        {/* Stat cards */}
+        <Row style={styles.statRow}>
+          <StatCard value={stepsToGo.toLocaleString()} label="Steps to go" emoji="👟" source={ICON_3D.shoe} />
+          <StatCard value={`${USER.distanceKm} km`} label="distance" emoji="📍" />
+          <StatCard value={`${USER.kcal}`} label="kcal" emoji="🔥" source={ICON_3D.fire} />
+        </Row>
+
+        {/* Encouragement banner */}
+        <View style={[styles.banner, { backgroundColor: Brand.greenTint }]}>
+          <View style={styles.flex}>
+            <Txt variant="title" color={Brand.greenDark}>
+              Keep it up!
+            </Txt>
+            <Txt variant="body" color={Brand.green} style={{ marginTop: 4 }}>
+              You’re doing great today.
+            </Txt>
+          </View>
+          <Icon3D source={ICON_3D.thumbsUp} emoji="👍" size={78} />
+        </View>
+      </ScrollView>
+    </Screen>
+  );
+}
+
+function DayPill({ day }: { day: DayDot }) {
+  const { colors } = useTheme();
+  const boltColor = day.active || day.done ? Brand.green : colors.textFaint;
+  return (
+    <View
+      style={[
+        styles.dayPill,
+        {
+          borderColor: colors.border,
+          backgroundColor: day.active ? Brand.greenTint : colors.background,
+        },
+      ]}>
+      <Txt variant="caption" color={day.active ? Brand.green : colors.textMuted}>
+        {day.date}
+      </Txt>
+      <Txt variant="label" color={day.active ? Brand.green : colors.text} style={{ marginTop: 2 }}>
+        {day.label}
+      </Txt>
+      <Ionicons name="flash" size={16} color={boltColor} style={{ marginTop: 6 }} />
+    </View>
+  );
+}
+
+function StatCard({
+  value,
+  label,
+  emoji,
+  source,
+}: {
+  value: string;
+  label: string;
+  emoji: string;
+  source?: ImageSourcePropType;
+}) {
+  const { colors } = useTheme();
+  return (
+    <View style={[styles.statCard, { backgroundColor: colors.card }]}>
+      <Txt variant="heading">{value}</Txt>
+      <Txt variant="caption" muted style={{ marginVertical: 4 }}>
+        {label}
+      </Txt>
+      <Icon3D source={source} emoji={emoji} size={28} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
+  flex: { flex: 1 },
+  header: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    justifyContent: 'space-between',
+  },
+  headerCenter: { flex: 1, alignItems: 'center', paddingHorizontal: Spacing.sm },
+  dayStrip: { paddingHorizontal: Spacing.lg, gap: Spacing.md, paddingVertical: Spacing.sm },
+  dayPill: {
+    width: 56,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.pill,
+    borderWidth: 1.5,
+    alignItems: 'center',
+  },
+  streak: { justifyContent: 'center', paddingVertical: Spacing.md },
+  ringWrap: { alignItems: 'center', marginTop: Spacing.sm, marginBottom: Spacing.xl },
+  ringValue: { fontSize: 40, fontWeight: '800', marginTop: 2 },
+  statRow: { paddingHorizontal: Spacing.lg, gap: Spacing.md },
+  statCard: {
+    flex: 1,
+    borderRadius: Radius.lg,
+    paddingVertical: Spacing.lg,
+    alignItems: 'center',
+  },
+  banner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.xl,
+    padding: Spacing.xl,
+    borderRadius: Radius.xl,
   },
 });
