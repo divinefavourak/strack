@@ -5,15 +5,27 @@ import { Alert } from 'react-native';
 import { GOOGLE_CLIENT_IDS, GOOGLE_CONFIGURED } from '@/lib/config';
 import { useAuth } from './auth-context';
 
-/**
- * Google sign-in (scaffolded). Wires the button to expo-auth-session's Google
- * id_token flow; until real client IDs are added to config/app.json it stays
- * disabled and explains itself instead of failing. When configured, a
- * successful prompt yields an id_token that we exchange via POST /auth/google.
- */
-export function useGoogleAuth() {
-  const { signInWithGoogle } = useAuth();
+type GoogleAuth = { available: boolean; signIn: () => void };
 
+/**
+ * Google sign-in (scaffolded). expo-auth-session's `useIdTokenAuthRequest`
+ * throws if the current platform's client ID is missing, so we must not call it
+ * until Google is configured. `GOOGLE_CONFIGURED` is a build-time constant, so
+ * selecting the real vs. stub hook at module load keeps hook order stable.
+ */
+function useGoogleAuthStub(): GoogleAuth {
+  return {
+    available: false,
+    signIn: () =>
+      Alert.alert(
+        'Google sign-in',
+        'Google sign-in isn’t configured yet. Add your client IDs in app.json → extra.google.',
+      ),
+  };
+}
+
+function useGoogleAuthReal(): GoogleAuth {
+  const { signInWithGoogle } = useAuth();
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     iosClientId: GOOGLE_CLIENT_IDS.ios || undefined,
     androidClientId: GOOGLE_CLIENT_IDS.android || undefined,
@@ -27,16 +39,9 @@ export function useGoogleAuth() {
     }
   }, [response]);
 
-  const available = GOOGLE_CONFIGURED && !!request;
-
-  return {
-    available,
-    signIn: () => {
-      if (!available) {
-        Alert.alert('Google sign-in', 'Google sign-in isn’t configured yet. Add your client IDs in lib/config.ts.');
-        return;
-      }
-      promptAsync();
-    },
-  };
+  return { available: !!request, signIn: () => promptAsync() };
 }
+
+export const useGoogleAuth: () => GoogleAuth = GOOGLE_CONFIGURED
+  ? useGoogleAuthReal
+  : useGoogleAuthStub;
