@@ -15,7 +15,7 @@ import { WalkMark } from '@/components/strack/walk-mark';
 import { Brand, Radius, Shadow, Spacing } from '@/constants/theme';
 import { useTheme } from '@/context/theme-context';
 import { ICON_3D, STREAK_FIRE } from '@/data/assets';
-import { useDailyStat, useLogManualSteps, useStepHistory, useTodayStats } from '@/hooks/api';
+import { useDailyStat, useLogManualSteps, useStepHistory, useTodayStats, useUpdateSettings } from '@/hooks/api';
 import { type DailyStatRead } from '@/lib/api/types';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useAutoStepTracking } from '@/lib/steps/pedometer';
@@ -56,9 +56,17 @@ function currentWeek(): DailyStatRead[] {
 }
 
 export default function Home() {
-  const { colors, isDark, toggleScheme } = useTheme();
+  const { colors, isDark, setScheme } = useTheme();
   const { user } = useAuth();
   const qc = useQueryClient();
+  const updateSettings = useUpdateSettings();
+
+  // Toggle theme AND persist it, so it isn't reverted when settings reload elsewhere.
+  const toggleTheme = () => {
+    const next = isDark ? 'light' : 'dark';
+    setScheme(next);
+    updateSettings.mutate({ theme: next });
+  };
 
   const { data: today, isLoading } = useTodayStats();
   const { data: history } = useStepHistory('week');
@@ -90,7 +98,7 @@ export default function Home() {
             name={isDark ? 'sunny' : 'moon'}
             size={22}
             color={isDark ? '#FDB813' : colors.text}
-            onPress={toggleScheme}
+            onPress={toggleTheme}
           />
           <View style={styles.headerCenter}>
             <Txt variant="heading">

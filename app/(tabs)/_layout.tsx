@@ -1,8 +1,10 @@
 import { Tabs } from 'expo-router';
 
 import { TabBar } from '@/components/strack/tab-bar';
+import { usePrefsSync } from '@/hooks/use-prefs-sync';
 
 export default function TabsLayout() {
+  usePrefsSync();
   return (
     <Tabs
       tabBar={(props) => <TabBar {...props} />}

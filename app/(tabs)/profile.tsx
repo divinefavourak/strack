@@ -2,7 +2,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
 import { CenterModal, Radio } from '@/components/strack/center-modal';
@@ -37,14 +37,6 @@ export default function Profile() {
   const { size: fontSize, setSize: setFontSize } = useFontScale();
   const google = useGoogleAuth();
   const [modal, setModal] = useState<ModalKind>(null);
-
-  // Seed the app theme + font scale from the user's saved server preferences.
-  useEffect(() => {
-    if (settings?.theme) setScheme(settings.theme);
-  }, [settings?.theme]);
-  useEffect(() => {
-    if (settings?.font_size) setFontSize(settings.font_size);
-  }, [settings?.font_size]);
 
   const me = profile ?? user;
   const name = me?.preferred_name || me?.username || me?.email?.split('@')[0] || 'You';

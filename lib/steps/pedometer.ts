@@ -83,6 +83,9 @@ export function useAutoStepTracking({
     };
 
     (async () => {
+      // Android 10+ requires ACTIVITY_RECOGNITION at runtime, else watchStepCount never fires.
+      const perm = await Pedometer.requestPermissionsAsync().catch(() => null);
+      if (perm && !perm.granted) return;
       const available = await Pedometer.isAvailableAsync().catch(() => false);
       if (!available || !mounted) return;
       watch = Pedometer.watchStepCount((result) => {
