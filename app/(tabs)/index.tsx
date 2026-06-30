@@ -76,8 +76,10 @@ export default function Home() {
 
   const steps = today?.total_steps ?? 0;
   const goal = today?.goal_steps ?? 8000;
-  const pct = today ? today.progress_percent / 100 : 0;
+  // steps/goal (not progress_percent, which caps at 100) so the ring can overflow past the goal.
+  const pct = goal > 0 ? steps / goal : 0;
   const fresh = steps === 0;
+  const goalBeaten = pct >= 1;
 
   return (
     <Screen edges={['top']}>
@@ -132,7 +134,7 @@ export default function Home() {
               <Txt style={[styles.ringValue, { color: colors.text }]}>{steps.toLocaleString()}</Txt>
             )}
             <Txt variant="heading" color={colors.tint}>
-              /{goal.toLocaleString()} Steps
+              {goalBeaten ? 'Goal smashed! 🎉' : `/${goal.toLocaleString()} Steps`}
             </Txt>
           </ProgressRing>
         </View>
