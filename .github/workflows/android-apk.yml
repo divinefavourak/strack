@@ -22,15 +22,16 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      # Puts the Android SDK + sdkmanager on PATH (and accepts licenses).
+      - uses: android-actions/setup-android@v3
+
       - name: Install dependencies
         # npm install (not ci): the lockfile is Windows-generated and ci is strict
         # about platform-specific optional deps that differ on the Linux runner.
         run: npm install --no-audit --no-fund
 
       - name: Install NDK + CMake (for native C++ modules)
-        run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "ndk;27.1.12297006" "cmake;3.22.1"
+        run: sdkmanager "ndk;27.1.12297006" "cmake;3.22.1"
 
       - name: Prebuild Android project
         run: npx expo prebuild --platform android --no-install
