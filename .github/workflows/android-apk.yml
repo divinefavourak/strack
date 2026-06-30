@@ -1,0 +1,44 @@
+name: Build Android APK
+
+# Run manually from the Actions tab (no EAS queue). Produces a downloadable,
+# installable release APK. No keystore secrets needed — Expo's generated Android
+# project signs the release build with the debug keystore by default.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install dependencies
+        # npm install (not ci): the lockfile is Windows-generated and ci is strict
+        # about platform-specific optional deps that differ on the Linux runner.
+        run: npm install --no-audit --no-fund
+
+      - name: Prebuild Android project
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Build release APK
+        # arm64-v8a only keeps the APK small (covers essentially all modern phones).
+        run: |
+          chmod +x android/gradlew
+          cd android && ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: strack-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
