@@ -4,14 +4,18 @@ import { useCallback, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { type ImageSourcePropType } from 'react-native';
 
+import { Image } from 'expo-image';
+import Animated from 'react-native-reanimated';
+
 import { Icon3D } from '@/components/strack/icon3d';
 import { ProgressRing } from '@/components/strack/progress-ring';
 import { Row, Screen, Txt } from '@/components/strack/themed';
+import { useFloat } from '@/components/strack/use-float';
 import { WalkMark } from '@/components/strack/walk-mark';
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { Brand, Radius, Shadow, Spacing } from '@/constants/theme';
 import { useTheme } from '@/context/theme-context';
-import { ICON_3D } from '@/data/assets';
-import { useLogManualSteps, useStepHistory, useTodayStats } from '@/hooks/api';
+import { ICON_3D, STREAK_FIRE } from '@/data/assets';
+import { useDailyStat, useLogManualSteps, useStepHistory, useTodayStats } from '@/hooks/api';
 import { type DailyStatRead } from '@/lib/api/types';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useAutoStepTracking } from '@/lib/steps/pedometer';
@@ -32,6 +36,25 @@ function dayMonth(iso: string) {
 }
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
+/** Current Sun–Sat week as empty day stats, so the day bar always shows (even for new users). */
+function currentWeek(): DailyStatRead[] {
+  const now = new Date();
+  const sunday = new Date(now);
+  sunday.setDate(now.getDate() - now.getDay());
+  return Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date(sunday);
+    d.setDate(sunday.getDate() + i);
+    return {
+      date: d.toISOString().slice(0, 10),
+      total_steps: 0,
+      distance_km: 0,
+      calories: 0,
+      active_minutes: 0,
+      goal_completed_at: null,
+    };
+  });
+}
+
 export default function Home() {
   const { colors, isDark, toggleScheme } = useTheme();
   const { user } = useAuth();
@@ -41,6 +64,8 @@ export default function Home() {
   const { data: history } = useStepHistory('week');
   const { source } = useStepSource();
   const [manualOpen, setManualOpen] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const bannerBob = useFloat({ distance: 5, duration: 1600 });
 
   const onSynced = useCallback(() => {
     qc.invalidateQueries({ queryKey: qk.todayStats });
@@ -52,6 +77,7 @@ export default function Home() {
   const steps = today?.total_steps ?? 0;
   const goal = today?.goal_steps ?? 8000;
   const pct = today ? today.progress_percent / 100 : 0;
+  const fresh = steps === 0;
 
   return (
     <Screen edges={['top']}>
@@ -59,9 +85,9 @@ export default function Home() {
         {/* Header */}
         <Row style={styles.header}>
           <Ionicons
-            name={isDark ? 'sunny-outline' : 'moon-outline'}
+            name={isDark ? 'sunny' : 'moon'}
             size={22}
-            color={colors.text}
+            color={isDark ? '#FDB813' : colors.text}
             onPress={toggleScheme}
           />
           <View style={styles.headerCenter}>
@@ -69,7 +95,7 @@ export default function Home() {
               {greeting()}, {user?.preferred_name ?? 'there'} 👋
             </Txt>
             <Txt variant="caption" muted style={{ marginTop: 2 }}>
-              Great job staying active!
+              {fresh ? 'Let’s get started!' : 'Great job staying active!'}
             </Txt>
           </View>
           {source === 'manual' ? (
@@ -81,17 +107,18 @@ export default function Home() {
 
         {/* Day strip */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.dayStrip}>
-          {(history ?? []).map((d) => (
-            <DayPill key={d.date} day={d} />
+          {(history && history.length ? history : currentWeek()).map((d) => (
+            <DayPill key={d.date} day={d} onPress={() => setSelectedDay(d.date)} />
           ))}
         </ScrollView>
 
         {/* Streak */}
         <Row style={styles.streak}>
           <Ionicons name="chevron-back" size={18} color={colors.textMuted} />
-          <Txt variant="label" style={{ marginHorizontal: Spacing.md }}>
-            🔥 {today?.current_streak ?? 0} days streak
-          </Txt>
+          <Row style={{ marginHorizontal: Spacing.md, gap: 4 }}>
+            <Image source={STREAK_FIRE} style={styles.streakFire} contentFit="contain" />
+            <Txt variant="label">{today?.current_streak ?? 0} days streak</Txt>
+          </Row>
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </Row>
 
@@ -121,17 +148,20 @@ export default function Home() {
         <View style={[styles.banner, { backgroundColor: Brand.greenTint }]}>
           <View style={styles.flex}>
             <Txt variant="title" color={Brand.greenDark}>
-              Keep it up!
+              {fresh ? 'Welcome!' : 'Keep it up!'}
             </Txt>
             <Txt variant="body" color={Brand.green} style={{ marginTop: 4 }}>
-              You’re doing great today.
+              {fresh ? 'Cheers to a great start today!' : 'You’re doing great today.'}
             </Txt>
           </View>
-          <Icon3D source={ICON_3D.thumbsUp} emoji="👍" size={78} />
+          <Animated.View style={bannerBob}>
+            <Icon3D source={ICON_3D.thumbsUp} emoji="👍" size={78} />
+          </Animated.View>
         </View>
       </ScrollView>
 
       <ManualStepModal visible={manualOpen} onClose={() => setManualOpen(false)} />
+      <DayDetailModal date={selectedDay} onClose={() => setSelectedDay(null)} />
     </Screen>
   );
 }
@@ -177,13 +207,14 @@ function ManualStepModal({ visible, onClose }: { visible: boolean; onClose: () =
   );
 }
 
-function DayPill({ day }: { day: DailyStatRead }) {
+function DayPill({ day, onPress }: { day: DailyStatRead; onPress: () => void }) {
   const { colors } = useTheme();
   const active = day.date === todayIso();
   const done = day.goal_completed_at != null;
   const boltColor = active || done ? Brand.green : colors.textFaint;
   return (
-    <View
+    <Pressable
+      onPress={onPress}
       style={[
         styles.dayPill,
         { borderColor: colors.border, backgroundColor: active ? Brand.greenTint : colors.background },
@@ -195,7 +226,67 @@ function DayPill({ day }: { day: DailyStatRead }) {
         {weekday(day.date)}
       </Txt>
       <Ionicons name="flash" size={16} color={boltColor} style={{ marginTop: 6 }} />
-    </View>
+    </Pressable>
+  );
+}
+
+function DayDetailModal({ date, onClose }: { date: string | null; onClose: () => void }) {
+  const { colors } = useTheme();
+  const { data, isLoading, isError } = useDailyStat(date);
+  const visible = date != null;
+  const isFuture = date != null && date > todayIso();
+  const label = date
+    ? new Date(date).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
+    : '';
+
+  const stats = [
+    { label: 'Steps', value: (data?.total_steps ?? 0).toLocaleString(), emoji: '👟' },
+    { label: 'Distance', value: `${(data?.distance_km ?? 0).toFixed(1)} km`, emoji: '📍' },
+    { label: 'Calories', value: `${data?.calories ?? 0} kcal`, emoji: '🔥' },
+    { label: 'Active', value: `${data?.active_minutes ?? 0} min`, emoji: '⏱️' },
+  ];
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.backdrop} onPress={onClose}>
+        <Pressable style={[styles.sheet, { backgroundColor: colors.background }]} onPress={(e) => e.stopPropagation()}>
+          <Txt variant="heading" style={{ marginBottom: 4 }}>
+            {label}
+          </Txt>
+          {data?.goal_completed_at && (
+            <Txt variant="caption" color={Brand.green} style={{ marginBottom: Spacing.md }}>
+              🎯 Goal reached
+            </Txt>
+          )}
+          {isLoading ? (
+            <ActivityIndicator color={Brand.green} style={{ marginVertical: Spacing.xl }} />
+          ) : isFuture || isError || !data ? (
+            <Txt variant="body" muted style={{ marginVertical: Spacing.lg }}>
+              {isFuture ? 'This day hasn’t happened yet.' : 'No activity recorded for this day.'}
+            </Txt>
+          ) : (
+            <View style={styles.dayGrid}>
+              {stats.map((s) => (
+                <View key={s.label} style={[styles.dayStat, { backgroundColor: colors.card }]}>
+                  <Txt style={{ fontSize: 20 }}>{s.emoji}</Txt>
+                  <Txt variant="heading" style={{ marginTop: 4 }}>
+                    {s.value}
+                  </Txt>
+                  <Txt variant="caption" muted>
+                    {s.label}
+                  </Txt>
+                </View>
+              ))}
+            </View>
+          )}
+          <Pressable onPress={onClose} style={{ marginTop: Spacing.lg, alignItems: 'center' }}>
+            <Txt variant="label" muted>
+              Close
+            </Txt>
+          </Pressable>
+        </Pressable>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -226,13 +317,21 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   header: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, justifyContent: 'space-between' },
   headerCenter: { flex: 1, alignItems: 'center', paddingHorizontal: Spacing.sm },
-  dayStrip: { paddingHorizontal: Spacing.lg, gap: Spacing.md, paddingVertical: Spacing.sm },
-  dayPill: { width: 56, paddingVertical: Spacing.md, borderRadius: Radius.pill, borderWidth: 1.5, alignItems: 'center' },
+  dayStrip: { paddingHorizontal: Spacing.lg, gap: Spacing.md, paddingVertical: Spacing.md },
+  dayPill: {
+    width: 56,
+    paddingVertical: Spacing.md,
+    borderRadius: Radius.pill,
+    borderWidth: 1,
+    alignItems: 'center',
+    ...Shadow.soft,
+  },
   streak: { justifyContent: 'center', paddingVertical: Spacing.md },
+  streakFire: { width: 22, height: 22 },
   ringWrap: { alignItems: 'center', marginTop: Spacing.sm, marginBottom: Spacing.xl },
   ringValue: { fontSize: 40, fontWeight: '800', marginTop: 2 },
   statRow: { paddingHorizontal: Spacing.lg, gap: Spacing.md },
-  statCard: { flex: 1, borderRadius: Radius.lg, paddingVertical: Spacing.lg, alignItems: 'center' },
+  statCard: { flex: 1, borderRadius: Radius.lg, paddingVertical: Spacing.lg, alignItems: 'center', ...Shadow.soft },
   banner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -245,4 +344,6 @@ const styles = StyleSheet.create({
   sheet: { borderTopLeftRadius: Radius.xl, borderTopRightRadius: Radius.xl, padding: Spacing.xl, paddingBottom: Spacing.xxl },
   presetRow: { flexWrap: 'wrap', gap: Spacing.md },
   preset: { flexGrow: 1, minWidth: '45%', alignItems: 'center', paddingVertical: Spacing.lg, borderRadius: Radius.lg },
+  dayGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.md },
+  dayStat: { width: '47.5%', flexGrow: 1, borderRadius: Radius.lg, padding: Spacing.lg, alignItems: 'center' },
 });

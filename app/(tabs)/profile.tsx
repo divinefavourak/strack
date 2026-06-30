@@ -2,21 +2,29 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
+import { CenterModal, Radio } from '@/components/strack/center-modal';
+import { GoogleIcon } from '@/components/strack/google-icon';
 import { Icon3D } from '@/components/strack/icon3d';
 import { Row, Screen, Txt } from '@/components/strack/themed';
-import { Brand, Radius, Spacing } from '@/constants/theme';
+import { Brand, Radius, Shadow, Spacing } from '@/constants/theme';
 import { useTheme } from '@/context/theme-context';
 import { ICON_3D } from '@/data/assets';
 import { useProfile, useSettings, useUpdateSettings, useUserStats } from '@/hooks/api';
 import { type FontSize } from '@/lib/api/types';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useGoogleAuth } from '@/lib/auth/google';
+import { useFontScale } from '@/lib/prefs/font-scale';
 import { useStepSource } from '@/lib/steps/source';
 
-const FONT_ORDER: FontSize[] = ['small', 'medium', 'large'];
+type ModalKind = 'font' | 'theme' | 'logout' | null;
+const FONT_OPTIONS: { value: FontSize; label: string; size: number }[] = [
+  { value: 'large', label: 'Large', size: 22 },
+  { value: 'medium', label: 'Medium', size: 17 },
+  { value: 'small', label: 'Small', size: 14 },
+];
 
 export default function Profile() {
   const { colors, isDark, setScheme } = useTheme();
@@ -26,12 +34,17 @@ export default function Profile() {
   const { data: settings } = useSettings();
   const updateSettings = useUpdateSettings();
   const { source, setSource } = useStepSource();
+  const { size: fontSize, setSize: setFontSize } = useFontScale();
   const google = useGoogleAuth();
+  const [modal, setModal] = useState<ModalKind>(null);
 
-  // Seed the app theme from the user's saved server preference.
+  // Seed the app theme + font scale from the user's saved server preferences.
   useEffect(() => {
     if (settings?.theme) setScheme(settings.theme);
   }, [settings?.theme]);
+  useEffect(() => {
+    if (settings?.font_size) setFontSize(settings.font_size);
+  }, [settings?.font_size]);
 
   const me = profile ?? user;
   const name = me?.preferred_name || me?.username || me?.email?.split('@')[0] || 'You';
@@ -46,17 +59,18 @@ export default function Profile() {
     { icon: 'handshake', emoji: '🤝', value: `${stats?.friend_count ?? 0}`, label: 'Friends' },
   ];
 
-  function cycleFont() {
-    const cur = settings?.font_size ?? 'medium';
-    const next = FONT_ORDER[(FONT_ORDER.indexOf(cur) + 1) % FONT_ORDER.length];
-    updateSettings.mutate({ font_size: next });
+  function selectFont(value: FontSize) {
+    setFontSize(value); // instant local effect
+    updateSettings.mutate({ font_size: value });
+    setModal(null);
   }
-  function toggleTheme() {
-    const next = isDark ? 'light' : 'dark';
+  function selectTheme(next: 'light' | 'dark') {
     setScheme(next);
     updateSettings.mutate({ theme: next });
+    setModal(null);
   }
   async function logout() {
+    setModal(null);
     await signOut();
     router.replace('/');
   }
@@ -94,9 +108,9 @@ export default function Profile() {
             <Txt variant="label" color="#FFFFFF">
               Sync
             </Txt>
-            <Txt variant="label" color="#FFFFFF" style={styles.syncG}>
-              G
-            </Txt>
+            <View style={styles.syncG}>
+              <GoogleIcon size={16} />
+            </View>
           </Pressable>
         </Row>
 
@@ -120,10 +134,10 @@ export default function Profile() {
           Settings
         </Txt>
 
-        <SettingRow icon="format-size" label="Font size" onPress={cycleFont}>
-          <ValuePill text={cap(settings?.font_size ?? 'medium')} />
+        <SettingRow icon="format-size" label="Font size" onPress={() => setModal('font')}>
+          <ValuePill text={cap(fontSize)} />
         </SettingRow>
-        <SettingRow icon="theme-light-dark" label="Theme" onPress={toggleTheme}>
+        <SettingRow icon="theme-light-dark" label="Theme" onPress={() => setModal('theme')}>
           <ValuePill text={isDark ? 'Dark Mode' : 'Light Mode'} />
         </SettingRow>
         <SettingRow icon="run" label="Step tracking">
@@ -151,10 +165,66 @@ export default function Profile() {
         <SettingRow icon="account-group-outline" label="Find friends" onPress={() => router.push('/find-friends')}>
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </SettingRow>
-        <SettingRow icon="logout" label="Logout" onPress={logout}>
+        <SettingRow icon="logout" label="Logout" onPress={() => setModal('logout')}>
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </SettingRow>
       </ScrollView>
+
+      {/* Font size picker */}
+      <CenterModal visible={modal === 'font'} onClose={() => setModal(null)}>
+        <Txt variant="heading" style={styles.modalTitle}>
+          Select preferred font size:
+        </Txt>
+        <View style={[styles.optionsBox, { borderColor: colors.border }]}>
+          {FONT_OPTIONS.map((o) => (
+            <Pressable key={o.value} onPress={() => selectFont(o.value)} style={styles.optionRow}>
+              <Radio selected={fontSize === o.value} />
+              <Txt style={{ fontSize: o.size, fontWeight: '600' }}>{o.label}</Txt>
+            </Pressable>
+          ))}
+        </View>
+      </CenterModal>
+
+      {/* Theme picker */}
+      <CenterModal visible={modal === 'theme'} onClose={() => setModal(null)}>
+        <Txt variant="heading" style={styles.modalTitle}>
+          Select preferred theme:
+        </Txt>
+        <Pressable onPress={() => selectTheme('light')} style={styles.optionRow}>
+          <Radio selected={!isDark} />
+          <Txt variant="body" style={styles.flex}>
+            Light Mode
+          </Txt>
+          <Ionicons name="sunny" size={20} color="#FDB813" />
+        </Pressable>
+        <Pressable onPress={() => selectTheme('dark')} style={styles.optionRow}>
+          <Radio selected={isDark} />
+          <Txt variant="body" style={styles.flex}>
+            Dark Mode
+          </Txt>
+          <Ionicons name="moon" size={20} color={colors.text} />
+        </Pressable>
+      </CenterModal>
+
+      {/* Logout confirmation */}
+      <CenterModal visible={modal === 'logout'} onClose={() => setModal(null)}>
+        <View style={{ alignItems: 'center' }}>
+          <Ionicons name="warning" size={52} color={Brand.green} />
+          <Txt variant="title" style={styles.logoutTitle}>
+            Are you sure you want to log out?
+          </Txt>
+        </View>
+        <Pressable onPress={logout} style={[styles.logoutBtn, { backgroundColor: Brand.greenTint }]}>
+          <Txt variant="heading" color={Brand.greenDark}>
+            Log Out
+          </Txt>
+        </Pressable>
+        <Pressable onPress={() => setModal(null)} style={[styles.cancelBtn, { borderColor: Brand.green }]}>
+          <Txt variant="heading" color={Brand.green}>
+            Cancel
+          </Txt>
+        </Pressable>
+      </CenterModal>
     </Screen>
   );
 }
@@ -219,11 +289,17 @@ const styles = StyleSheet.create({
   avatarText: { color: '#FFFFFF', fontSize: 40, fontWeight: '700' },
   nameRow: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.lg, gap: Spacing.md },
   sync: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: Brand.green, paddingHorizontal: Spacing.lg, height: 40, borderRadius: Radius.md },
-  syncG: { backgroundColor: '#FFFFFF22', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, overflow: 'hidden' },
+  syncG: { backgroundColor: '#FFFFFF', padding: 3, borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: Spacing.lg, gap: Spacing.md },
-  statCard: { width: '47.5%', flexGrow: 1, borderRadius: Radius.lg, padding: Spacing.lg },
+  statCard: { width: '47.5%', flexGrow: 1, borderRadius: Radius.lg, padding: Spacing.lg, ...Shadow.soft },
   sectionLabel: { paddingHorizontal: Spacing.lg, marginTop: Spacing.xl, marginBottom: Spacing.sm },
   settingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.lg, borderBottomWidth: StyleSheet.hairlineWidth },
   modeToggle: { gap: 6 },
   chip: { paddingHorizontal: Spacing.md, paddingVertical: 6, borderRadius: Radius.pill },
+  modalTitle: { textAlign: 'center', marginBottom: Spacing.lg },
+  optionsBox: { borderWidth: 1, borderRadius: Radius.lg, paddingHorizontal: Spacing.lg, paddingVertical: Spacing.xs },
+  optionRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md },
+  logoutTitle: { textAlign: 'center', marginTop: Spacing.md, marginBottom: Spacing.xl },
+  logoutBtn: { height: 52, borderRadius: Radius.pill, alignItems: 'center', justifyContent: 'center' },
+  cancelBtn: { height: 52, borderRadius: Radius.pill, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginTop: Spacing.md },
 });

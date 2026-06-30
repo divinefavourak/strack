@@ -55,6 +55,14 @@ export function useStepHistory(range: StepRange = 'week') {
   const enabled = useAuthed();
   return useQuery({ queryKey: qk.stepHistory(range), queryFn: () => stepsApi.history(range), enabled });
 }
+export function useDailyStat(date: string | null) {
+  const enabled = useAuthed() && !!date;
+  return useQuery({
+    queryKey: qk.dailyStat(date ?? ''),
+    queryFn: () => stepsApi.daily(date as string),
+    enabled,
+  });
+}
 export function useTodayGoal() {
   const enabled = useAuthed();
   return useQuery({ queryKey: qk.todayGoal, queryFn: goalsApi.today, enabled });

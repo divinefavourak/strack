@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import { Avatar } from '@/components/strack/avatar';
 import { Icon3D } from '@/components/strack/icon3d';
@@ -65,13 +66,11 @@ export default function Feed() {
         <ActivityIndicator color="#1B5E20" style={{ marginTop: Spacing.xl }} />
       ) : (
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.list}>
-          {(data ?? []).map((post) =>
-            tab === 'Community' ? (
-              <CommunityCard key={post.id} post={post} />
-            ) : (
-              <ActivityCard key={post.id} post={post} />
-            ),
-          )}
+          {(data ?? []).map((post, i) => (
+            <Animated.View key={post.id} entering={FadeInDown.delay(i * 60).springify().damping(16)}>
+              {tab === 'Community' ? <CommunityCard post={post} /> : <ActivityCard post={post} />}
+            </Animated.View>
+          ))}
           {data?.length === 0 && (
             <Txt variant="body" muted style={styles.empty}>
               {tab === 'Community' ? 'No community posts yet.' : 'No activity yet — take a walk!'}

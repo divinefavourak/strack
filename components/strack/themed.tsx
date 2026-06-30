@@ -19,6 +19,7 @@ import {
 import { SafeAreaView, type Edge } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/context/theme-context';
+import { useFontScale } from '@/lib/prefs/font-scale';
 
 export function Screen({
   children,
@@ -79,8 +80,11 @@ export function Txt({
   muted?: boolean;
 }) {
   const { colors } = useTheme();
+  const { scale } = useFontScale();
   const resolved = color ?? (muted ? colors.textMuted : colors.text);
-  return <Text style={[variantStyle[variant], { color: resolved }, style]} {...rest} />;
+  const base = variantStyle[variant];
+  const scaled = { ...base, fontSize: (base.fontSize ?? 14) * scale };
+  return <Text style={[scaled, { color: resolved }, style]} {...rest} />;
 }
 
 export function Row({ style, ...rest }: ViewProps) {

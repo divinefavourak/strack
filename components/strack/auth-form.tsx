@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 
 import { Button } from '@/components/strack/button';
+import { GoogleIcon } from '@/components/strack/google-icon';
 import { Row, Screen, Txt } from '@/components/strack/themed';
 import { WalkMark } from '@/components/strack/walk-mark';
 import { Brand, Radius, Spacing } from '@/constants/theme';
@@ -125,7 +126,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           <Pressable
             onPress={google.signIn}
             style={[styles.google, { borderColor: colors.border }]}>
-            <Ionicons name="logo-google" size={18} color={colors.text} />
+            <GoogleIcon size={18} />
             <Txt variant="label">Continue with Google</Txt>
           </Pressable>
         </View>

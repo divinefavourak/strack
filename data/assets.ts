@@ -67,7 +67,13 @@ export const ICON_3D: Record<string, ImageSourcePropType | undefined> = {
   handshake: require('@/assets/images/icon-handshake.png'),
   shoe: require('@/assets/images/icon-shoe.png'),
 
+  fire: require('@/assets/images/icon-fire.png'),
+
   // Not yet exported — emoji fallback until the PNG is dropped in:
-  fire: undefined, // 106:618 -> icon-fire.png
   wave: undefined, // 175:881 -> icon-wave.png
 };
+
+/** Streak flame is an animated WebP; the runner is a static frame (bounced in code). */
+export const STREAK_FIRE: ImageSourcePropType = require('@/assets/images/streak-fire.webp');
+export const GIRL_RUNNER: ImageSourcePropType = require('@/assets/images/girl-runner.png');
+export const LOGO_MARK: ImageSourcePropType = require('@/assets/images/logo-mark.png');

@@ -24,6 +24,7 @@ export const qk = {
   onboardingStatus: ['onboarding', 'status'] as const,
   todayStats: ['steps', 'today'] as const,
   stepHistory: (range: string) => ['steps', 'history', range] as const,
+  dailyStat: (date: string) => ['steps', 'daily', date] as const,
   todayGoal: ['goals', 'today'] as const,
   leaderboard: (scope: string) => ['leaderboard', scope] as const,
   feed: (kind: string) => ['feed', kind] as const,

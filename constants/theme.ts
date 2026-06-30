@@ -79,11 +79,22 @@ export const Spacing = {
 } as const;
 
 export const Radius = {
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
+  sm: 10,
+  md: 14,
+  lg: 18,
+  xl: 26,
   pill: 999,
+} as const;
+
+/** Subtle, soft elevation used on cards and pills for a gentle, lifted feel. */
+export const Shadow = {
+  soft: {
+    shadowColor: '#000000',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
 } as const;
 
 export const Fonts = Platform.select({

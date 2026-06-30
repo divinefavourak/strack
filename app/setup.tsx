@@ -148,7 +148,6 @@ function ProfileStep({
       </Txt>
       <GenderCard label="Male" icon="face-man" selected={gender === 'male'} onPress={() => setGender('male')} />
       <GenderCard label="Female" icon="face-woman" selected={gender === 'female'} onPress={() => setGender('female')} />
-      <GenderCard label="Other" icon="account" selected={gender === 'other'} onPress={() => setGender('other')} />
     </>
   );
 }
