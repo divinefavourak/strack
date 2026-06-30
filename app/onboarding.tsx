@@ -27,7 +27,7 @@ export default function Onboarding() {
           Track your steps, set a goal that fits you, and build a healthier life - one walk at a
           time.
         </Txt>
-        <Button label="Get Started" onPress={() => router.replace('/setup')} />
+        <Button label="Get Started" onPress={() => router.replace('/register')} />
       </View>
     </View>
   );

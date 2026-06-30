@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Avatar } from '@/components/strack/avatar';
 import { Row, Screen, Txt } from '@/components/strack/themed';
@@ -8,13 +8,19 @@ import { SegmentedControl } from '@/components/strack/segmented-control';
 import { Brand, Spacing } from '@/constants/theme';
 import { useTheme } from '@/context/theme-context';
 import { MEDALS, RIBBONS } from '@/data/assets';
-import { LEADERBOARD, type Leader } from '@/data/mock';
+import { useLeaderboard } from '@/hooks/api';
+import { type LeaderboardEntry, type LeaderboardScope } from '@/lib/api/types';
 
 const RANGES = ['Today', 'This week', 'This month'] as const;
+const SCOPE: Record<(typeof RANGES)[number], LeaderboardScope> = {
+  Today: 'today',
+  'This week': 'week',
+  'This month': 'month',
+};
 
 export default function Leaderboard() {
-  const { colors } = useTheme();
   const [range, setRange] = useState<(typeof RANGES)[number]>('Today');
+  const { data, isLoading } = useLeaderboard(SCOPE[range]);
 
   return (
     <Screen edges={['top']}>
@@ -33,25 +39,34 @@ export default function Leaderboard() {
         <Image source={MEDALS[3]} style={styles.medalBronze} contentFit="contain" />
       </Row>
 
-      <Txt variant="label" color={Brand.green} style={styles.callout}>
-        You are #1 in {range.toLowerCase()}’s leaderboard.
-      </Txt>
+      {data?.my_rank != null && (
+        <Txt variant="label" color={Brand.green} style={styles.callout}>
+          You are #{data.my_rank} in {range.toLowerCase()}’s leaderboard.
+        </Txt>
+      )}
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: Spacing.xxl }}>
-        {LEADERBOARD.map((item) => (
-          <LeaderRow key={item.rank} item={item} />
-        ))}
-      </ScrollView>
+      {isLoading ? (
+        <ActivityIndicator color={Brand.green} style={{ marginTop: Spacing.xl }} />
+      ) : (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing.xxl }}>
+          {(data?.entries ?? []).map((item) => (
+            <LeaderRow key={item.user_id} item={item} />
+          ))}
+          {data?.entries.length === 0 && (
+            <Txt variant="body" muted style={styles.empty}>
+              No rankings yet. Get moving to climb the board!
+            </Txt>
+          )}
+        </ScrollView>
+      )}
     </Screen>
   );
 }
 
-function LeaderRow({ item }: { item: Leader }) {
+function LeaderRow({ item }: { item: LeaderboardEntry }) {
   const { colors } = useTheme();
   return (
-    <Row style={[styles.row, { borderBottomColor: colors.border }]}>
+    <Row style={[styles.row, { borderBottomColor: colors.border }, item.is_self && { backgroundColor: Brand.greenTint }]}>
       <View style={styles.rank}>
         {RIBBONS[item.rank] ? (
           <Image source={RIBBONS[item.rank]} style={styles.ribbon} contentFit="contain" />
@@ -61,9 +76,13 @@ function LeaderRow({ item }: { item: Leader }) {
           </Txt>
         )}
       </View>
-      <Avatar name={item.name} size={40} />
+      <Avatar
+        name={item.display_name}
+        size={40}
+        image={item.avatar_url ? { uri: item.avatar_url } : undefined}
+      />
       <Txt variant="heading" style={styles.name}>
-        {item.name}
+        {item.display_name}
       </Txt>
       <Txt variant="body" muted>
         {item.steps.toLocaleString()} steps
@@ -75,23 +94,14 @@ function LeaderRow({ item }: { item: Leader }) {
 const styles = StyleSheet.create({
   title: { textAlign: 'center', paddingVertical: Spacing.md },
   segment: { paddingHorizontal: Spacing.lg, marginBottom: Spacing.lg },
-  podium: {
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    gap: Spacing.lg,
-    height: 130,
-  },
+  podium: { justifyContent: 'center', alignItems: 'flex-end', gap: Spacing.lg, height: 130 },
   medalGold: { width: 110, height: 110 },
   medalSilver: { width: 78, height: 78, marginBottom: 6 },
   medalBronze: { width: 64, height: 64, marginBottom: 10 },
   ribbon: { width: 30, height: 30 },
   callout: { textAlign: 'center', marginVertical: Spacing.lg },
-  row: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    gap: Spacing.md,
-    borderBottomWidth: 1,
-  },
+  row: { paddingHorizontal: Spacing.lg, paddingVertical: Spacing.md, gap: Spacing.md, borderBottomWidth: 1, borderRadius: 12 },
   rank: { width: 28, alignItems: 'center' },
   name: { flex: 1 },
+  empty: { textAlign: 'center', marginTop: Spacing.xxl, paddingHorizontal: Spacing.xl },
 });

@@ -5,6 +5,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import 'react-native-reanimated';
 
 import { ThemeProvider, useTheme } from '@/context/theme-context';
+import { AuthProvider } from '@/lib/auth/auth-context';
+import { QueryProvider } from '@/lib/query';
 
 export const unstable_settings = {
   anchor: 'index',
@@ -17,6 +19,7 @@ function RootNavigator() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="onboarding" />
+        <Stack.Screen name="(auth)" />
         <Stack.Screen name="setup" />
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="find-friends" options={{ presentation: 'card' }} />
@@ -30,9 +33,13 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <ThemeProvider>
-          <RootNavigator />
-        </ThemeProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <ThemeProvider>
+              <RootNavigator />
+            </ThemeProvider>
+          </AuthProvider>
+        </QueryProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

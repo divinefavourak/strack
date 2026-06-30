@@ -3,16 +3,29 @@ import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
+import { Txt } from '@/components/strack/themed';
 import { WalkMark } from '@/components/strack/walk-mark';
 import { Brand } from '@/constants/theme';
-import { Txt } from '@/components/strack/themed';
+import { useAuth } from '@/lib/auth/auth-context';
 
-/** Splash: deep-green brand screen that auto-advances to onboarding. */
+/**
+ * Splash + route guard. Once the session has resolved, send the user to the
+ * right place: marketing onboarding for guests, setup if signed in but
+ * onboarding is incomplete, otherwise the app.
+ */
 export default function Splash() {
+  const { status, user } = useAuth();
+
   useEffect(() => {
-    const t = setTimeout(() => router.replace('/onboarding'), 1600);
-    return () => clearTimeout(t);
-  }, []);
+    if (status === 'loading') return;
+    if (status === 'guest') {
+      router.replace('/onboarding');
+    } else if (user?.onboarding_completed_at) {
+      router.replace('/(tabs)');
+    } else {
+      router.replace('/setup');
+    }
+  }, [status, user]);
 
   return (
     <View style={styles.container}>

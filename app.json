@@ -39,7 +39,14 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Allow Strack to count your steps."
+        }
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -49,6 +56,12 @@
       "router": {},
       "eas": {
         "projectId": "29f0f806-e175-4393-a5a2-8ff013f5f959"
+      },
+      "apiBaseUrl": "https://strack-api-zyaa.onrender.com/api/v1",
+      "google": {
+        "iosClientId": "",
+        "androidClientId": "",
+        "webClientId": ""
       }
     }
   }
