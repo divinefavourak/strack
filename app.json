@@ -45,7 +45,13 @@
           "motionPermission": "Allow Strack to count your steps."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.634533255578-7fc8b0d5ft9suloa5q1rt566b6aqndn6"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
