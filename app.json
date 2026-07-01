@@ -9,7 +9,8 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.akcodex.strack"
     },
     "android": {
       "adaptiveIcon": {
@@ -57,9 +58,9 @@
       },
       "apiBaseUrl": "https://strack-api-zyaa.onrender.com/api/v1",
       "google": {
-        "iosClientId": "",
-        "androidClientId": "",
-        "webClientId": ""
+        "iosClientId": "634533255578-7fc8b0d5ft9suloa5q1rt566b6aqndn6.apps.googleusercontent.com",
+        "androidClientId": "634533255578-gmorcatt2ljb2tlsoupr88275e00kfut.apps.googleusercontent.com",
+        "webClientId": "634533255578-8n3legi8srislfnjflgvs3jutps7bdv5.apps.googleusercontent.com"
       }
     }
   }
