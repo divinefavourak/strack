@@ -35,7 +35,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
     <View
       style={[
         styles.bar,
-        { backgroundColor: colors.tabBar, borderTopColor: colors.border, paddingBottom: insets.bottom || 10 },
+        { backgroundColor: colors.background, paddingBottom: insets.bottom || 10 },
       ]}>
       {/* Sliding green pill indicator */}
       <Animated.View style={[styles.indicatorTrack, { width: tabWidth }, indicatorStyle]}>
@@ -80,7 +80,6 @@ const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
     paddingTop: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
   },
   tab: { flex: 1, alignItems: 'center', gap: 4 },
   icon: { width: 24, height: 24 },
