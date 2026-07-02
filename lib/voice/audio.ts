@@ -137,9 +137,26 @@ export function playRemoteAudio(url: string): Promise<void> {
         // quiet earpiece; switch back to playback so replies come out the speaker
         // (and are audible even when the ringer switch is on silent).
         await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
-        const player = createAudioPlayer({ uri: resolveAudioUrl(url) });
+        const player = createAudioPlayer({ uri: resolveAudioUrl(url) }, { updateInterval: 250 });
         activePlayer = player;
+        let kicked = false;
         const sub = player.addListener('playbackStatusUpdate', (status) => {
+          if (__DEV__) {
+            console.log('[voice] play status', {
+              isLoaded: status.isLoaded,
+              playing: status.playing,
+              buffering: status.isBuffering,
+              duration: status.duration,
+              state: status.playbackState,
+              didJustFinish: status.didJustFinish,
+            });
+          }
+          // On Android a remote source must finish loading before play() has any
+          // effect, so kick playback off the first time it reports ready.
+          if (status.isLoaded && !kicked) {
+            kicked = true;
+            player.play();
+          }
           if (status.didJustFinish) {
             sub?.remove();
             if (activePlayer === player) {
@@ -149,6 +166,7 @@ export function playRemoteAudio(url: string): Promise<void> {
             finish();
           }
         });
+        // Best-effort immediate start (works when the source is already cached).
         player.play();
       } catch {
         finish();
