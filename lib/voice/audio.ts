@@ -93,25 +93,31 @@ export function buildListenInput(uri: string, language: string): VoiceListenInpu
 
 // --- Playback -------------------------------------------------------------
 
-// Only one voice clip should ever play at a time (briefing or command reply).
+// Only one voice clip plays at a time (briefing or command reply). We track the
+// active player *and* its promise resolver so that interrupting playback (a new
+// clip, or turning the assistant off) unblocks whoever is awaiting it instead of
+// leaving them hung until the safety timeout.
 let activePlayer: AudioPlayer | null = null;
+let activeFinish: (() => void) | null = null;
 
 /**
  * Play a remote audio URL, replacing whatever was playing. Resolves once
- * playback finishes (or errors) so callers can sequence UI state.
+ * playback finishes, errors, or is interrupted, so callers can sequence UI state.
  */
 export function playRemoteAudio(url: string): Promise<void> {
   stopVoicePlayback();
   return new Promise((resolve) => {
     let settled = false;
-    // Never hang the UI if the clip fails to load or its finish event is missed.
-    const guard = setTimeout(() => finish(), 60000);
     function finish() {
       if (settled) return;
       settled = true;
       clearTimeout(guard);
+      if (activeFinish === finish) activeFinish = null;
       resolve();
     }
+    // Never hang the UI if the clip fails to load or its finish event is missed.
+    const guard = setTimeout(finish, 60000);
+    activeFinish = finish;
     try {
       const player = createAudioPlayer({ uri: url });
       activePlayer = player;
@@ -132,7 +138,7 @@ export function playRemoteAudio(url: string): Promise<void> {
   });
 }
 
-/** Stop and release any voice clip currently playing. */
+/** Stop and release the current clip, resolving any promise awaiting it. */
 export function stopVoicePlayback() {
   if (activePlayer) {
     try {
@@ -142,4 +148,8 @@ export function stopVoicePlayback() {
     }
     activePlayer = null;
   }
+  // Unblock a caller still awaiting the interrupted playRemoteAudio().
+  const finish = activeFinish;
+  activeFinish = null;
+  finish?.();
 }

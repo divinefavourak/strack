@@ -70,6 +70,13 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<VoicePhase>('idle');
   const [lastResult, setLastResult] = useState<VoiceListenResponse | null>(null);
   const lastBriefedAt = useRef(0);
+  // Mirrors `phase` for synchronous reads in event handlers (guards against
+  // overlapping playback without making playBriefing depend on — and churn
+  // with — phase).
+  const busyRef = useRef(false);
+  useEffect(() => {
+    busyRef.current = phase !== 'idle';
+  }, [phase]);
 
   const languagesQuery = useQuery({
     queryKey: qk.voiceLanguages,
@@ -79,7 +86,7 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
   });
 
   const playBriefing = useCallback(async () => {
-    if (!enabled) return;
+    if (!enabled || busyRef.current) return; // don't overlap an in-flight clip
     lastBriefedAt.current = Date.now();
     setPhase('briefing');
     try {

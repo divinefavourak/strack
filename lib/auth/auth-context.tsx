@@ -37,13 +37,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const res = await authApi.refresh(current.refreshToken);
           await persist(res);
           return res.access_token;
-        } catch {
-          await wipe();
+        } catch (err) {
+          // Only drop the session if the refresh token itself is rejected. A
+          // transient failure (offline, timeout, cold-start 5xx) must keep the
+          // tokens so the next launch can retry — otherwise reopening the app
+          // during a backend cold start still logs the user out.
+          if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+            await wipe();
+          }
           return null;
         }
-      },
-      onAuthExpired: () => {
-        wipe();
       },
     });
   }, []);

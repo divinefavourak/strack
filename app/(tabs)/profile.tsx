@@ -45,10 +45,14 @@ export default function Profile() {
   const langLabel =
     voice.languages.find((l) => l.code === voice.language)?.label ?? voice.language.toUpperCase();
 
-  // Turning the assistant on immediately prompts for a language.
+  // Turning the assistant on prompts for a language — but only once the setting
+  // has persisted, so useVoice() sees it enabled and the languages query fires
+  // (otherwise the modal opens to an empty/disabled-query state).
   function toggleVoice(on: boolean) {
-    updateSettings.mutate({ voice_assistant_enabled: on });
-    if (on) setModal('voiceLang');
+    updateSettings.mutate(
+      { voice_assistant_enabled: on },
+      { onSuccess: () => on && setModal('voiceLang') },
+    );
   }
 
   const me = profile ?? user;

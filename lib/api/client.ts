@@ -18,12 +18,10 @@ export class ApiError extends Error {
 type AuthHandlers = {
   getAccessToken: () => string | null;
   refreshTokens: () => Promise<string | null>;
-  onAuthExpired: () => void;
 };
 let handlers: AuthHandlers = {
   getAccessToken: () => null,
   refreshTokens: async () => null,
-  onAuthExpired: () => {},
 };
 export function setAuthHandlers(h: AuthHandlers) {
   handlers = h;
@@ -91,11 +89,12 @@ async function send(method: string, path: string, opts: RequestOptions, retrying
     clearTimeout(timeout);
   }
 
-  // On 401 for an authed request, refresh once and retry.
+  // On 401 for an authed request, refresh once and retry. If the refresh fails
+  // the request simply returns the 401; refreshTokens() has already decided
+  // whether the session is dead (and wiped it) or the failure was transient.
   if (res.status === 401 && opts.auth !== false && !retrying) {
     const newToken = await refreshOnce();
     if (newToken) return send(method, path, opts, true);
-    handlers.onAuthExpired();
   }
   return res;
 }

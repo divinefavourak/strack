@@ -115,10 +115,10 @@ export default function Home() {
             <Ionicons name="add-circle" size={26} color={Brand.green} onPress={() => setManualOpen(true)} />
           ) : (
             <Ionicons
-              name="volume-high-outline"
+              name={voice.phase === 'briefing' ? 'volume-high' : 'volume-high-outline'}
               size={22}
-              color={voice.phase === 'briefing' ? Brand.green : colors.text}
-              onPress={voice.enabled ? voice.playBriefing : undefined}
+              color={!voice.enabled ? colors.textFaint : voice.phase === 'briefing' ? Brand.green : colors.text}
+              onPress={voice.enabled && !voice.busy ? voice.playBriefing : undefined}
             />
           )}
         </Row>

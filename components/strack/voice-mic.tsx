@@ -32,6 +32,9 @@ export function VoiceMic() {
   const recorderState = useAudioRecorderState(recorder);
   const hasPermission = useRef<boolean | null>(null);
   const startedAt = useRef(0);
+  // True while the finger is down. Guards the async gap between press and the
+  // actual record() call so a quick release can't leave an orphaned recording.
+  const holding = useRef(false);
 
   const recording = recorderState.isRecording;
   const working = voice.phase === 'processing' || voice.phase === 'speaking';
@@ -61,18 +64,28 @@ export function VoiceMic() {
 
   const startRecording = useCallback(async () => {
     if (working || recording) return;
-    if (!(await ensurePermission())) return;
+    holding.current = true;
+    if (!(await ensurePermission())) {
+      holding.current = false;
+      return;
+    }
     try {
       await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      if (!holding.current) return; // released during permission prompt / setup
       await recorder.prepareToRecordAsync();
+      if (!holding.current) return;
       recorder.record();
       startedAt.current = Date.now();
+      // A release that landed between record() and here leaves us recording — stop it.
+      if (!holding.current) recorder.stop().catch(() => {});
     } catch {
       Alert.alert('Voice', "Couldn't start recording. Please try again.");
     }
   }, [ensurePermission, recorder, recording, working]);
 
   const stopRecording = useCallback(async () => {
+    holding.current = false;
+    // If recording hasn't actually started yet, startRecording's guards abort it.
     if (!recorder.isRecording) return;
     try {
       await recorder.stop();
