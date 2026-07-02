@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
-import { setAuthHandlers } from '@/lib/api/client';
+import { ApiError, setAuthHandlers } from '@/lib/api/client';
 import { authApi, usersApi } from '@/lib/api/endpoints';
 import { type TokenResponse, type UserRead } from '@/lib/api/types';
 import { clearTokens, loadTokens, saveTokens, type StoredTokens } from './token-store';
@@ -37,13 +37,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const res = await authApi.refresh(current.refreshToken);
           await persist(res);
           return res.access_token;
-        } catch {
-          await wipe();
+        } catch (err) {
+          // Only drop the session if the refresh token itself is rejected. A
+          // transient failure (offline, timeout, cold-start 5xx) must keep the
+          // tokens so the next launch can retry — otherwise reopening the app
+          // during a backend cold start still logs the user out.
+          if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+            await wipe();
+          }
           return null;
         }
-      },
-      onAuthExpired: () => {
-        wipe();
       },
     });
   }, []);
@@ -83,8 +86,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tokens.current = stored;
       try {
         await hydrateUser();
-      } catch {
-        await wipe();
+      } catch (err) {
+        // Only sign the user out on a *genuine* auth failure. `/users/me` returns
+        // 401/403 only after the client already tried (and failed) to refresh, so
+        // reaching here with one of those means the session is truly dead.
+        //
+        // Any other failure — offline, request timeout, or a cold-started backend
+        // 5xx — is transient. Wiping tokens there is exactly what logged people out
+        // every time they reopened the app. Keep the session and let React Query
+        // re-fetch the profile once connectivity returns.
+        if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+          await wipe();
+        } else {
+          setStatus('authed');
+        }
       }
     })();
   }, []);

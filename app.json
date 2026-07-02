@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "strack",
+    "name": "Strack",
     "slug": "strack",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -43,6 +43,12 @@
         "expo-sensors",
         {
           "motionPermission": "Allow Strack to count your steps."
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow Strack to use the microphone for voice commands."
         }
       ],
       "expo-secure-store",

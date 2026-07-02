@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 
 import { CenterModal, Radio } from '@/components/strack/center-modal';
+import { VoiceLanguageModal } from '@/components/strack/voice-language-modal';
 import { GoogleIcon } from '@/components/strack/google-icon';
 import { Icon3D } from '@/components/strack/icon3d';
 import { Row, Screen, Txt } from '@/components/strack/themed';
@@ -18,8 +19,9 @@ import { useAuth } from '@/lib/auth/auth-context';
 import { useGoogleAuth } from '@/lib/auth/google';
 import { useFontScale } from '@/lib/prefs/font-scale';
 import { useStepSource } from '@/lib/steps/source';
+import { useVoice } from '@/lib/voice/voice-context';
 
-type ModalKind = 'font' | 'theme' | 'logout' | null;
+type ModalKind = 'font' | 'theme' | 'logout' | 'voiceLang' | null;
 const FONT_OPTIONS: { value: FontSize; label: string; size: number }[] = [
   { value: 'large', label: 'Large', size: 22 },
   { value: 'medium', label: 'Medium', size: 17 },
@@ -36,7 +38,22 @@ export default function Profile() {
   const { source, setSource } = useStepSource();
   const { size: fontSize, setSize: setFontSize } = useFontScale();
   const google = useGoogleAuth();
+  const voice = useVoice();
   const [modal, setModal] = useState<ModalKind>(null);
+
+  const voiceOn = settings?.voice_assistant_enabled ?? false;
+  const langLabel =
+    voice.languages.find((l) => l.code === voice.language)?.label ?? voice.language.toUpperCase();
+
+  // Turning the assistant on prompts for a language — but only once the setting
+  // has persisted, so useVoice() sees it enabled and the languages query fires
+  // (otherwise the modal opens to an empty/disabled-query state).
+  function toggleVoice(on: boolean) {
+    updateSettings.mutate(
+      { voice_assistant_enabled: on },
+      { onSuccess: () => on && setModal('voiceLang') },
+    );
+  }
 
   const me = profile ?? user;
   const name = me?.preferred_name || me?.username || me?.email?.split('@')[0] || 'You';
@@ -148,12 +165,17 @@ export default function Profile() {
         </SettingRow>
         <SettingRow icon="volume-high" label="Voice Assistant">
           <Switch
-            value={settings?.voice_assistant_enabled ?? false}
-            onValueChange={(v) => updateSettings.mutate({ voice_assistant_enabled: v })}
+            value={voiceOn}
+            onValueChange={toggleVoice}
             trackColor={{ true: Brand.green, false: '#D6D6D6' }}
             thumbColor="#FFFFFF"
           />
         </SettingRow>
+        {voiceOn && (
+          <SettingRow icon="translate" label="Voice language" onPress={() => setModal('voiceLang')}>
+            <ValuePill text={langLabel} />
+          </SettingRow>
+        )}
         <SettingRow icon="account-group-outline" label="Find friends" onPress={() => router.push('/find-friends')}>
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </SettingRow>
@@ -197,6 +219,9 @@ export default function Profile() {
           <Ionicons name="moon" size={20} color={colors.text} />
         </Pressable>
       </CenterModal>
+
+      {/* Voice language picker */}
+      <VoiceLanguageModal visible={modal === 'voiceLang'} onClose={() => setModal(null)} />
 
       {/* Logout confirmation */}
       <CenterModal visible={modal === 'logout'} onClose={() => setModal(null)}>

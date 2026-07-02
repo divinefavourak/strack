@@ -31,6 +31,10 @@ import {
   type UserStats,
   type UserUpdate,
   type UUID,
+  type VoiceLanguage,
+  type VoiceListenResponse,
+  type VoiceSpeakRequest,
+  type VoiceSpeakResponse,
 } from './types';
 
 export const authApi = {
@@ -106,4 +110,40 @@ export const feedApi = {
     api.get<FeedPostRead[]>(`/feed/${kind}`, { query: { limit } }),
   share: (body: FeedShareRequest) => api.post<FeedPostRead>('/feed/share', body),
   react: (postId: UUID, emoji: string) => api.post<void>(`/feed/${postId}/react`, { emoji }),
+};
+
+/** A voice command clip to transcribe + execute (see voiceApi.listen). */
+export type VoiceListenInput = {
+  /** Local file URI of the recorded clip. */
+  uri: string;
+  /** File name to send (extension should match the recording, e.g. command.wav). */
+  fileName: string;
+  /** MIME type of the clip (e.g. audio/wav, audio/m4a). */
+  mimeType: string;
+  language: string;
+  /** STT encoding hint the backend expects (default LINEAR16). */
+  encoding: string;
+  sampleRateHertz: number;
+};
+
+export const voiceApi = {
+  languages: () => api.get<VoiceLanguage[]>('/voice/languages'),
+  speak: (body: VoiceSpeakRequest) => api.post<VoiceSpeakResponse>('/voice/speak', body),
+  briefing: (language: string) =>
+    api.get<VoiceSpeakResponse>('/voice/briefing', { query: { language } }),
+  listen: (input: VoiceListenInput) => {
+    const form = new FormData();
+    // React Native's fetch accepts a { uri, name, type } object as a file part.
+    form.append('audio', {
+      uri: input.uri,
+      name: input.fileName,
+      type: input.mimeType,
+    } as unknown as Blob);
+    form.append('language', input.language);
+    form.append('encoding', input.encoding);
+    form.append('sample_rate_hertz', String(input.sampleRateHertz));
+    // rawBody skips JSON serialization; Content-Type is left unset so fetch adds
+    // the multipart boundary itself.
+    return api.post<VoiceListenResponse>('/voice/listen', undefined, { rawBody: form });
+  },
 };

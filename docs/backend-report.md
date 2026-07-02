@@ -13,8 +13,9 @@
 | 2 | Community feed | `GET /feed/community` returns nothing from other users | Backend scoping/population |
 | 3 | Friends | `POST /friends/requests` → "no user found with that email" for real emails; suggestions can't be added | Backend lookup + schema gap |
 | 4 | Steps | Need confirmation that `POST /steps/sync` updates today's totals/streak | Verification |
+| 5 | Voice | `POST /voice/listen` transcribes + returns audio, but `intent` is always `unknown` | Backend NLU / intent classifier |
 
-All four are **single-user-environment** symptoms — the client calls each endpoint correctly, but there is no second user / social data for the API to return. The sections below ask the backend to confirm intended scoping and to provide seed data for testing.
+Issues 1–4 are **single-user-environment** symptoms — the client calls each endpoint correctly, but there is no second user / social data for the API to return. The sections below ask the backend to confirm intended scoping and to provide seed data for testing. Issue 5 is a separate voice/NLU concern (added 2026-07-02).
 
 ---
 
@@ -68,6 +69,22 @@ All four are **single-user-environment** symptoms — the client calls each endp
   2. After sync, `GET /steps/today` reflects updated `total_steps`, `distance_km`, `calories`, `steps_remaining`, `current_streak`, and `goal_completed_at`.
   3. `progress_percent` — does it **cap at 100**? (The client now derives ring progress from `total_steps / goal_steps` so it can render an over-goal overflow; just confirming the field's range.)
   4. Do step updates feed into the **leaderboard** and trigger any **milestone / activity feed** entries?
+
+---
+
+## Issue 5 — Voice `/voice/listen` always returns `intent: "unknown"`
+
+- **Endpoint:** `POST /api/v1/voice/listen` (multipart: `audio`, `language`, `encoding`, `sample_rate_hertz`)
+- **Client behavior:** records a spoken command, uploads the clip, then plays back `response_text` / `audio_url` and refreshes affected data. The command's action is expected to run **server-side** (the client reads `intent` / `result`, it does not classify commands itself).
+- **Observed:** transcription and TTS both work — the response includes a correct `transcript` and a playable `audio_url` — but **every** command comes back with `intent: "unknown"` and the generic "Sorry, I didn't understand that." reply, so no action is ever performed.
+- **Captured examples** (`language: "en"`):
+  - `transcript: "Create a new truck for today."` → `intent: "unknown"` (note: STT heard "truck", not "track")
+  - `transcript: "Let's start a new journey."` → `intent: "unknown"`
+- **Questions / requests for backend:**
+  1. What are the **supported intents** and the exact **command phrasings / grammar** the classifier expects? Is it keyword/regex matching or an LLM? A list of intents with **sample utterances** would let the client guide users' phrasing.
+  2. Which **`language`** values is the NLU trained for? Does intent matching run on the transcript in that language, or only English?
+  3. Is the classifier resilient to common **STT near-misses** (e.g. "truck" ↔ "track", "record" ↔ "records")? If not, fuzzy/synonym matching would help a lot.
+  4. Confirm the **`result`** payload shape per intent, and whether `/voice/listen` actually **executes** the action server-side (e.g. creates/deletes a record) — the client invalidates step/goal/feed caches after a command on that assumption.
 
 ---
 

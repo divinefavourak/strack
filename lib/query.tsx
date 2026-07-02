@@ -32,6 +32,7 @@ export const qk = {
   friendRequests: ['friends', 'requests'] as const,
   suggestions: ['friends', 'suggestions'] as const,
   milestones: ['milestones'] as const,
+  voiceLanguages: ['voice', 'languages'] as const,
 };
 
 export function QueryProvider({ children }: { children: ReactNode }) {
