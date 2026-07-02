@@ -2,12 +2,14 @@ import {
   AudioQuality,
   createAudioPlayer,
   IOSOutputFormat,
+  setAudioModeAsync,
   type AudioPlayer,
   type RecordingOptions,
 } from 'expo-audio';
 import { Platform } from 'react-native';
 
 import { type VoiceListenInput } from '@/lib/api/endpoints';
+import { API_BASE_URL } from '@/lib/config';
 
 /**
  * Recording format for voice commands.
@@ -100,6 +102,17 @@ export function buildListenInput(uri: string, language: string): VoiceListenInpu
 let activePlayer: AudioPlayer | null = null;
 let activeFinish: (() => void) | null = null;
 
+/** Resolve a possibly-relative audio_url against the API origin. */
+function resolveAudioUrl(url: string): string {
+  if (/^https?:\/\//i.test(url)) return url;
+  try {
+    const origin = new URL(API_BASE_URL).origin;
+    return origin + (url.startsWith('/') ? url : `/${url}`);
+  } catch {
+    return url;
+  }
+}
+
 /**
  * Play a remote audio URL, replacing whatever was playing. Resolves once
  * playback finishes, errors, or is interrupted, so callers can sequence UI state.
@@ -118,23 +131,29 @@ export function playRemoteAudio(url: string): Promise<void> {
     // Never hang the UI if the clip fails to load or its finish event is missed.
     const guard = setTimeout(finish, 60000);
     activeFinish = finish;
-    try {
-      const player = createAudioPlayer({ uri: url });
-      activePlayer = player;
-      const sub = player.addListener('playbackStatusUpdate', (status) => {
-        if (status.didJustFinish) {
-          sub?.remove();
-          if (activePlayer === player) {
-            player.remove();
-            activePlayer = null;
+    (async () => {
+      try {
+        // Recording leaves the iOS session in play-and-record mode routed to the
+        // quiet earpiece; switch back to playback so replies come out the speaker
+        // (and are audible even when the ringer switch is on silent).
+        await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+        const player = createAudioPlayer({ uri: resolveAudioUrl(url) });
+        activePlayer = player;
+        const sub = player.addListener('playbackStatusUpdate', (status) => {
+          if (status.didJustFinish) {
+            sub?.remove();
+            if (activePlayer === player) {
+              player.remove();
+              activePlayer = null;
+            }
+            finish();
           }
-          finish();
-        }
-      });
-      player.play();
-    } catch {
-      finish();
-    }
+        });
+        player.play();
+      } catch {
+        finish();
+      }
+    })();
   });
 }
 

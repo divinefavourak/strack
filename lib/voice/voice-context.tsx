@@ -104,6 +104,15 @@ export function VoiceProvider({ children }: { children: ReactNode }) {
       setPhase('processing');
       try {
         const res = await voiceApi.listen(buildListenInput(uri, language));
+        if (__DEV__) {
+          console.log('[voice] listen ->', {
+            language,
+            transcript: res.transcript,
+            intent: res.intent,
+            response_text: res.response_text,
+            audio_url: res.audio_url,
+          });
+        }
         setLastResult(res);
         // The backend already executed the command; pull fresh data for the UI.
         COMMAND_INVALIDATION_KEYS.forEach((queryKey) => qc.invalidateQueries({ queryKey }));
