@@ -7,6 +7,7 @@ import 'react-native-reanimated';
 import { ThemeProvider, useTheme } from '@/context/theme-context';
 import { AuthProvider } from '@/lib/auth/auth-context';
 import { QueryProvider } from '@/lib/query';
+import { VoiceProvider } from '@/lib/voice/voice-context';
 
 export const unstable_settings = {
   anchor: 'index',
@@ -36,7 +37,9 @@ export default function RootLayout() {
         <QueryProvider>
           <AuthProvider>
             <ThemeProvider>
-              <RootNavigator />
+              <VoiceProvider>
+                <RootNavigator />
+              </VoiceProvider>
             </ThemeProvider>
           </AuthProvider>
         </QueryProvider>

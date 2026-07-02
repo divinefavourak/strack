@@ -11,6 +11,7 @@ import { Icon3D } from '@/components/strack/icon3d';
 import { ProgressRing } from '@/components/strack/progress-ring';
 import { Row, Screen, Txt } from '@/components/strack/themed';
 import { useFloat } from '@/components/strack/use-float';
+import { VoiceMic } from '@/components/strack/voice-mic';
 import { WalkMark } from '@/components/strack/walk-mark';
 import { Brand, Radius, Shadow, Spacing } from '@/constants/theme';
 import { useTheme } from '@/context/theme-context';
@@ -20,6 +21,7 @@ import { type DailyStatRead } from '@/lib/api/types';
 import { useAuth } from '@/lib/auth/auth-context';
 import { useAutoStepTracking } from '@/lib/steps/pedometer';
 import { useStepSource } from '@/lib/steps/source';
+import { useVoice } from '@/lib/voice/voice-context';
 import { qk } from '@/lib/query';
 
 function greeting() {
@@ -71,6 +73,7 @@ export default function Home() {
   const { data: today, isLoading } = useTodayStats();
   const { data: history } = useStepHistory('week');
   const { source } = useStepSource();
+  const voice = useVoice();
   const [manualOpen, setManualOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const bannerBob = useFloat({ distance: 5, duration: 1600 });
@@ -111,7 +114,12 @@ export default function Home() {
           {source === 'manual' ? (
             <Ionicons name="add-circle" size={26} color={Brand.green} onPress={() => setManualOpen(true)} />
           ) : (
-            <Ionicons name="volume-high-outline" size={22} color={colors.text} />
+            <Ionicons
+              name="volume-high-outline"
+              size={22}
+              color={voice.phase === 'briefing' ? Brand.green : colors.text}
+              onPress={voice.enabled ? voice.playBriefing : undefined}
+            />
           )}
         </Row>
 
@@ -172,6 +180,9 @@ export default function Home() {
 
       <ManualStepModal visible={manualOpen} onClose={() => setManualOpen(false)} />
       <DayDetailModal date={selectedDay} onClose={() => setSelectedDay(null)} />
+
+      {/* Floating voice command mic (only when the assistant is enabled) */}
+      <VoiceMic />
     </Screen>
   );
 }

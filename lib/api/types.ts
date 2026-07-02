@@ -181,11 +181,27 @@ export type ReactionRequest = { emoji: string };
 export type FeedKind = 'activity' | 'community';
 
 // --- Voice ---
+/** A speakable language the backend supports (e.g. { code: 'yo', label: 'Yorùbá' }). */
+export type VoiceLanguage = { code: string; label: string };
+export type VoiceSpeakRequest = { text: string; context_key?: string; language?: string };
 export type VoiceSpeakResponse = {
   text: string;
   language: string;
   audio_url: string;
   cached: boolean;
+};
+/**
+ * Result of POST /voice/listen. The backend transcribes the clip, classifies the
+ * `intent`, performs the action server-side, and returns spoken feedback
+ * (`response_text` + `audio_url`). `result` carries any structured payload.
+ */
+export type VoiceListenResponse = {
+  transcript: string;
+  language: string;
+  intent: string;
+  response_text: string;
+  audio_url: string;
+  result?: Record<string, unknown>;
 };
 
 /** Shape of FastAPI error responses ({ detail: ... }). */

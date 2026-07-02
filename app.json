@@ -45,6 +45,12 @@
           "motionPermission": "Allow Strack to count your steps."
         }
       ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow Strack to use the microphone for voice commands."
+        }
+      ],
       "expo-secure-store",
       [
         "@react-native-google-signin/google-signin",
