@@ -46,12 +46,17 @@ export function VoiceMic() {
 
   const ensurePermission = useCallback(async () => {
     if (hasPermission.current) return true;
-    const { granted } = await AudioModule.requestRecordingPermissionsAsync();
-    hasPermission.current = granted;
-    if (!granted) {
-      Alert.alert('Microphone needed', 'Enable microphone access to use voice commands.');
+    try {
+      const { granted } = await AudioModule.requestRecordingPermissionsAsync();
+      hasPermission.current = granted;
+      if (!granted) {
+        Alert.alert('Microphone needed', 'Enable microphone access to use voice commands.');
+      }
+      return granted;
+    } catch {
+      Alert.alert('Voice', 'Voice recording needs a development build. Please install a dev build / APK.');
+      return false;
     }
-    return granted;
   }, []);
 
   const startRecording = useCallback(async () => {

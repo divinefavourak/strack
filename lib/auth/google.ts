@@ -1,9 +1,3 @@
-import {
-  GoogleSignin,
-  isErrorWithCode,
-  isSuccessResponse,
-  statusCodes,
-} from '@react-native-google-signin/google-signin';
 import { useCallback } from 'react';
 import { Alert } from 'react-native';
 
@@ -19,14 +13,34 @@ type GoogleAuth = { available: boolean; signIn: () => void };
  * is the *web* client ID — that's exactly what the backend verifies against, and
  * it's why this works where the browser-based `expo-auth-session` code flow did
  * not (that flow returned a token scoped to the Android client ID).
+ *
+ * The `@react-native-google-signin` package is a third-party native module that
+ * is NOT present in Expo Go, nor in a dev client built before it was added.
+ * Importing it at the top level eagerly runs `getEnforcing('RNGoogleSignin')`,
+ * which throws and crashes the whole app on load. So we load it lazily behind a
+ * guarded require and degrade to a friendly message when it isn't in the binary.
  */
+type GoogleSigninModule = typeof import('@react-native-google-signin/google-signin');
 
-// `configure` is idempotent; run it once, lazily, on first use so environments
-// without the linked native module (e.g. web) don't blow up at import time.
+let cachedModule: GoogleSigninModule | null | undefined;
+function getGoogleModule(): GoogleSigninModule | null {
+  if (cachedModule === undefined) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      cachedModule = require('@react-native-google-signin/google-signin');
+    } catch {
+      // Native module missing (Expo Go / stale dev client).
+      cachedModule = null;
+    }
+  }
+  return cachedModule ?? null;
+}
+
+// `configure` is idempotent; run it once, lazily, on first use.
 let configured = false;
-function ensureConfigured() {
+function ensureConfigured(mod: GoogleSigninModule) {
   if (configured) return;
-  GoogleSignin.configure({
+  mod.GoogleSignin.configure({
     webClientId: GOOGLE_CLIENT_IDS.web || undefined,
     iosClientId: GOOGLE_CLIENT_IDS.ios || undefined,
     scopes: ['profile', 'email'],
@@ -34,6 +48,13 @@ function ensureConfigured() {
     offlineAccess: false,
   });
   configured = true;
+}
+
+function unavailableAlert() {
+  Alert.alert(
+    'Google sign-in',
+    'Google sign-in needs a development build (it isn’t available in Expo Go). Use email sign-in here, or install a dev build / APK.',
+  );
 }
 
 function useGoogleAuthStub(): GoogleAuth {
@@ -51,8 +72,14 @@ function useGoogleAuthReal(): GoogleAuth {
   const { signInWithGoogle } = useAuth();
 
   const signIn = useCallback(async () => {
+    const mod = getGoogleModule();
+    if (!mod) {
+      unavailableAlert();
+      return;
+    }
+    const { GoogleSignin, isErrorWithCode, isSuccessResponse, statusCodes } = mod;
     try {
-      ensureConfigured();
+      ensureConfigured(mod);
       // Surfaces the "update Google Play services" dialog on Android when stale.
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
 
